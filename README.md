@@ -1,49 +1,158 @@
-Variant Consistency Pipeline
-This pipeline evaluates donor-specific variant consistency in multiplexed single-cell data by comparing observed pileups against a reference VCF. It automates the process from raw BAM pileups to final consistency metrics using Snakemake.
+# Automated Workflow (Snakemake)
 
-1. Setup & Installation
-The pipeline uses Snakemake to manage software environments automatically.
+An optional `Snakefile` is provided to coordinate the variant consistency analysis steps and manage software dependencies through Snakemake.
 
-Clone this repository:
+This workflow serves as a convenience layer on top of the core analysis pipeline and may be used in place of manual execution of the individual scripts.
 
-Bash
-git clone <your-fork-url>
-cd my_var_con
-Create the Master Environment:
-If you are on Hoffman2, load the Anaconda module first:
+---
 
-Bash
-module load anaconda3
+## 1. Repository Structure & Environment Setup
+
+After cloning, your project directory should look like this:
+
+```
+my_var_con/
+├── Snakefile            # Snakemake workflow definition
+├── config.yaml          # Project-specific configuration
+├── .gitignore           # Prevents tracking of large data/env files
+├── envs/                # Conda environment definitions
+│   ├── snakemake.yaml   # Snakemake controller environment
+│   ├── cellsnp.yaml     # Environment for Rule 00 (cellsnp-lite)
+│   └── var_con.yaml     # Environment for variant consistency scripts
+├── scripts/             # Core Python analysis scripts
+└── README.md            # Documentation
+```
+
+The automated workflow requires a dedicated Snakemake environment to run the workflow engine.
+
+On shared high-performance computing (HPC) systems, it is recommended to create environments within an interactive compute session rather than on a login node.
+
+Create and activate the Snakemake environment:
+
+```
 conda env create -f envs/snakemake.yaml
-Activate the Environment:
-
-Bash
 conda activate snakemake_env
-2. Configuration
-Before running, you must update config.yaml with your specific project paths:
+```
 
-vcf: Path to your reference VCF.
+---
 
-donors: Path to a .txt file containing your multiplexed donor IDs.
+## 2. Configuration
 
-samples: A list of your sample names.
+Before running the workflow, define your samples and global parameters in `config.yaml`.
 
-out_root: The base directory where all results will be saved.
+### Sample Mapping
 
-3. Running the Pipeline
-Launch the pipeline with the following command. Snakemake will automatically build the required sub-environments for cellsnp-lite and the Python scripts.
+The workflow does not assume any specific naming convention for raw data files.
 
-Bash
-snakemake --use-conda --cores 16 -p
-Use -n before running to perform a "dry run" and verify the execution plan.
+In the `samples:` section of `config.yaml`, provide:
 
-4. Output Structure
-The pipeline generates an organized, numerical directory tree for each sample within your out_root:
+- A unique ID for each sample
+- The full path to its corresponding:
+  - BAM file
+  - barcodes file
 
-00_cellsnp/: Variant pileup results.
+**Example structure:**
 
-01_counts/: AD and DP matrices.
+```yaml
+samples:
+  sample_01:
+    bam: /path/to/sample_01.bam
+    barcodes: /path/to/sample_01/barcodes.tsv.gz
 
-02_indices/: Partitioned variant index dictionaries.
+  sample_02:
+    bam: /path/to/sample_02.bam
+    barcodes: /path/to/sample_02/barcodes.tsv.gz
+```
 
-03_metrics/cov{X}/: Final consistency CSVs filtered by coverage threshold X.
+Each sample ID will be used to generate a corresponding output directory.
+
+### Global Parameters
+
+In addition to sample definitions, specify the following global parameters:
+
+| Parameter | Description |
+|-----------|------------|
+| `vcf` | Path to the reference genotype VCF. |
+| `donors` | Path to the `donors.txt` file containing multiplexed donor IDs. |
+| `coverage_thresholds` | Minimum depth filters. The pipeline will generate separate consistency reports for each of these values (e.g., only including variants with ≥10 or ≥20 reads) to help you evaluate how sequencing depth impacts your results. |
+| `out_root` | Base directory for results. The pipeline will automatically create a structured folder tree (00_cellsnp through 03_metrics) for each sample within this path |
+
+**Example:**
+
+```yaml
+vcf: /path/to/reference.vcf.gz
+donors: /path/to/donors.txt
+coverage_thresholds: [0, 10, 20]
+out_root: /var-con_pipeline/
+```
+
+### Software & Dependencies
+
+All software is managed automatically via Conda.
+
+The workflow relies on `cellsnp-lite` for single-cell genotyping. Manual installation is not required.
+
+When run with `--use-conda`, Snakemake creates an isolated environment for `cellsnp-lite`, installs the correct version, and activates it only during the appropriate workflow step.
+
+---
+
+## 3. Execution
+
+Before launching the workflow, it is recommended to perform a dry run to verify that all paths in `config.yaml` are valid and that the execution plan is correct. Snakemake automatically detects the Snakefile in your current directory.
+
+### Dry Run
+
+```
+snakemake -np
+```
+
+This command prints the planned jobs without executing them.
+
+### Launch Workflow
+
+Once the dry run completes successfully, execute the pipeline:
+
+```
+snakemake --use-conda --cores <number_of_cores> -p
+```
+
+Replace `<number_of_cores>` with the number of CPU cores allocated to your session. The pipeline is multithreaded to improve performance, but requirements (CPU cores, memory, runtime) will scale with the number of samples and the size of your input data.
+
+On first execution, Snakemake will automatically create the required sub-environments:
+
+- `cellsnp-env` — for running `cellsnp-lite`
+- `var_con-env` — for running the variant consistency analysis scripts
+
+---
+
+## 4. Workflow Structure
+
+After execution, results are written to the directory specified by `out_root` using the following structure:
+
+```
+out_root/
+└── {sample}/
+    │
+    ├── 00_cellsnp/                    # Raw output generated by cellsnp-lite
+    │   ├── cellSNP.base.vcf.gz        # Candidate SNP sites evaluated
+    │   ├── cellSNP.tag.AD.mtx.gz      # Raw allelic depth (AD) matrix
+    │   ├── cellSNP.tag.DP.mtx.gz      # Raw total depth (DP) matrix
+    │   └── cellSNP.tag.OTH.mtx.gz     # Counts of non-reference / non-alt alleles
+    │
+    ├── 01_counts/                     # Processed matrices prepared for consistency analysis
+    │   ├── cellSNP.tag.DP.mtx.gz      # Filtered depth matrix (coverage applied)
+    │   ├── varcon.SNPs.vcf.gz         # SNP subset formatted for variant partitioning
+    │   └── {Donor}.consistent.mtx.gz  # Donor-specific consistency matrix
+    │
+    ├── 02_indices/                    # Variant category dictionaries (C1, C2, I1, I2)
+    │   ├── c1_dict.pkl                # Variants unique to assigned donor
+    │   └── i1_dict.pkl                # Variants matching another donor (ambient proxy)
+    │
+    ├── 03_metrics/
+    │   └── cov{X}/                    # Final reports at coverage threshold X
+    │       └── {sample}_c1_df_{X}.csv
+    │
+    └── logs/                          # Step-specific logs and error output
+```
+
+This staged structure mirrors the manual execution steps while ensuring reproducible and scalable processing.
