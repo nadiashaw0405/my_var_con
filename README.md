@@ -1,140 +1,107 @@
-# Variant Consistency Pipeline
+# Automated Workflow (Snakemake)
 
-A Snakemake-based workflow for evaluating donor-specific variant
-consistency in multiplexed single-cell data.
+An optional `Snakefile` is provided to coordinate the variant consistency analysis steps and manage software dependencies through Snakemake.
 
-This pipeline automates the process of comparing observed pileups
-against reference VCF genotypes to determine consistency across multiple
-donors.
+This workflow serves as a convenience layer on top of the core analysis pipeline and may be used in place of manual execution of the individual scripts.
 
-------------------------------------------------------------------------
+---
 
-## 1. Setup & Installation
+## 1. Environment Setup
 
-The pipeline uses **Snakemake** to manage all software dependencies
-automatically via Conda environments.
+The automated workflow requires a dedicated Snakemake controller environment to run the Snakemake engine.
 
-### Prerequisites
+**Hoffman2 Users:**  
+Request an interactive compute node before creating environments to avoid login node timeouts.
 
--   **Conda** must be installed on your system.
+Create and activate the Snakemake environment:
 
--   **Hoffman2 Users**: Load the Anaconda module before starting:
+```
+conda env create -f envs/snakemake.yaml
+conda activate snakemake_env
+```
 
-    module load anaconda3
-
-------------------------------------------------------------------------
-
-### Installation Steps
-
-#### 1. Clone the repository
-
-    git clone <your-fork-url>
-    cd my_var_con
-
-#### 2. Create the Master Environment
-
-This environment contains the Snakemake "Flight Controller".
-
-    conda env create -f envs/snakemake.yaml
-
-#### 3. Activate the Environment
-
-    conda activate snakemake_env
-
-------------------------------------------------------------------------
+---
 
 ## 2. Configuration
 
-Before running the pipeline, edit the `config.yaml` file to point to
-your specific project data.
+Before running the workflow, define your samples and global parameters in `config.yaml`.
 
-  -----------------------------------------------------------------------
-  Variable                                      Description
-  --------------------------------------------- -------------------------
-  `vcf`                                         Path to your reference
-                                                VCF file (genotypes).
+---
 
-  `donors`                                      Path to a `.txt` file
-                                                containing multiplexed
-                                                donor IDs.
+### Sample Mapping
 
-  `samples`                                     A list of sample names to
-                                                process.
+The workflow does not assume any specific naming convention for raw data files.
 
-  `out_root`                                    Base directory where all
-                                                results will be saved.
+In the `samples:` section of `config.yaml`, provide:
 
-  `coverage_thresholds`                         List of coverage levels
-                                                (e.g., `[0, 10, 20]`) for
-                                                final filtering.
-  -----------------------------------------------------------------------
+- A unique ID for each sample
+- The full path to its corresponding:
+  - BAM file
+  - barcodes file
 
-------------------------------------------------------------------------
+**Example structure:**
 
-## 3. Running the Pipeline
+```yaml
+samples:
+  sample_01:
+    bam: /path/to/sample_01.bam
+    barcodes: /path/to/sample_01/barcodes.tsv.gz
+
+  sample_02:
+    bam: /path/to/sample_02.bam
+    barcodes: /path/to/sample_02/barcodes.tsv.gz
+```
+
+Each sample ID will be used to generate a corresponding output directory.
+
+---
+
+### Global Parameters
+
+In addition to sample definitions, specify the following global parameters:
+
+| Parameter | Description |
+|------------|------------|
+| `vcf` | Path to the reference genotype VCF |
+| `donors` | Path to the `donors.txt` file containing multiplexed donor IDs |
+| `out_root` | Directory where all numerical output folders (`00–03`) will be created |
+| `coverage_thresholds` | List of coverage values used for final metric generation (e.g., `[0, 10, 20]`) |
+
+Example:
+
+```yaml
+vcf: /path/to/reference.vcf.gz
+donors: /path/to/donors.txt
+out_root: results/
+coverage_thresholds: [0, 10, 20]
+```
+
+---
+
+## 3. Execution
 
 Launch the pipeline with:
 
-    snakemake --use-conda --cores 16 -p
+```
+snakemake --use-conda --cores 16 -p
+```
 
-On the first run, Snakemake will automatically create the required
-sub-environments for:
+On the first run, Snakemake will automatically create the required sub-environments:
 
--   `cellsnp-lite`
--   The Python analysis scripts
+- `cellsnp-env`: For running `cellsnp-lite` during step 0
+- `var_con-env`: For running the variant consistency analysis scripts during steps 1–3
 
-------------------------------------------------------------------------
+---
 
-### Useful Commands
+## 4. Workflow Structure
 
-**Dry Run** --- View execution plan without running jobs:
+The automated workflow executes the following staged directory structure:
 
-    snakemake -np
+```
+00_cellsnp/   # Raw variant pileups from cellsnp-lite
+01_counts/    # Generation of AD and DP matrices
+02_indices/   # Partitioning of variants into C1, C2, I1, I2 categories
+03_metrics/   # Final consistency CSVs (I1 variants used as proxy for ambient contamination)
+```
 
-**Summary** --- View table of planned output files:
-
-    snakemake --summary
-
-**Unlock** --- Use if a previous session was interrupted:
-
-    snakemake --unlock
-
-------------------------------------------------------------------------
-
-## 4. Output Structure
-
-The pipeline generates an organized directory tree for each sample
-within `out_root`:
-
-    out_root/
-    ├── 00_cellsnp/        # Variant pileup results from cellsnp-lite
-    ├── 01_counts/         # AD and DP matrices generated from pileups
-    ├── 02_indices/        # Variant index dictionaries partitioned by consistency category
-    └── 03_metrics/
-        └── cov{X}/        # Final consistency CSVs for coverage threshold X
-
-### Directory Descriptions
-
--   **00_cellsnp/**\
-    Raw pileup outputs generated by `cellsnp-lite`.
-
--   **01_counts/**\
-    Processed allele depth (AD) and depth (DP) matrices derived from
-    pileups.
-
--   **02_indices/**\
-    Variant index dictionaries partitioned into consistency categories.
-
--   **03_metrics/cov{X}/**\
-    Final consistency metrics CSVs filtered at coverage threshold `X`.
-
-------------------------------------------------------------------------
-
-## Credits
-
-This pipeline is a fork of the original work by Terence Li, refactored
-for improved:
-
--   Portability\
--   Multithreading\
--   Automation via Snakemake
+This staged structure mirrors the manual execution steps while ensuring reproducible and scalable processing across samples and parameter settings.
