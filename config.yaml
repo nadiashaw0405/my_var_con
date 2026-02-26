@@ -1,0 +1,14 @@
+samples: ["20220928-IGVF-D0"]
+coverage_thresholds: [0]
+
+# Reference Data
+vcf: "/u/project/cluo/terencew/igvf/pilot/multiome/vcf/pilot_000.vcf.gz"
+donors: "/u/project/cluo/nshaw/new_variant_consistency/data/donors.txt"
+
+# Individual Input Paths (No longer branching off a single template)
+# Users can paste the full path for each sample/file type here
+bam_path: "/u/project/cluo/terencew/igvf/pilot/multiome/mapping/cr_arc/igvf_ref/{sample}/outs/gex_possorted_bam.bam"
+barcodes_path: "/u/project/cluo/terencew/igvf/pilot/multiome/mapping/cr_arc/igvf_ref/{sample}/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"
+
+# Output Logic
+out_root: "var-con_pipeline"

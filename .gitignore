@@ -1,0 +1,20 @@
+# Snakemake internal files
+.snakemake/
+
+# Output data (The numerical folders we created)
+var-con_pipeline/
+00_cellsnp_results/
+01_consistency_counts/
+02_variant_indices/
+03_metrics/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Log files
+logs/
+*.log
+
+# Conda environment prefix (if created locally)
+.conda/
