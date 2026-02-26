@@ -1,14 +1,22 @@
-samples: ["20220928-IGVF-D0"]
-coverage_thresholds: [0]
+# Variant Consistency Pipeline Configuration
 
-# Reference Data
-vcf: "/u/project/cluo/terencew/igvf/pilot/multiome/vcf/pilot_000.vcf.gz"
-donors: "/u/project/cluo/nshaw/new_variant_consistency/data/donors.txt"
+# 1. Global Reference Data
+vcf: "/path/to/reference.vcf.gz"
+donors: "/path/to/donors.txt"
 
-# Individual Input Paths (No longer branching off a single template)
-# Users can paste the full path for each sample/file type here
-bam_path: "/u/project/cluo/terencew/igvf/pilot/multiome/mapping/cr_arc/igvf_ref/{sample}/outs/gex_possorted_bam.bam"
-barcodes_path: "/u/project/cluo/terencew/igvf/pilot/multiome/mapping/cr_arc/igvf_ref/{sample}/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"
+# 2. Sample Mapping
+# Define each unique Sample ID and its specific file paths
+samples:
+  "Sample_01":
+    bam: "/path/to/sample_01_possorted.bam"
+    barcodes: "/path/to/sample_01/barcodes.tsv.gz"
+  "Sample_02":
+    bam: "/different/path/sample_02.bam"
+    barcodes: "/different/path/sample_02_barcodes.tsv"
 
-# Output Logic
+# 3. Analysis Parameters
+# Minimum depth filters for Step 03 reports
+coverage_thresholds: [0, 10, 20]
+
+# Base directory where 00_cellsnp, 01_counts, etc. will be created
 out_root: "var-con_pipeline"
