@@ -1,0 +1,13 @@
+name: var_con-env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.13.5
+  - numpy=2.3.1
+  - pandas=2.3.2
+  - scikit-learn=1.7.1
+  - scipy=1.16.0
+  - tqdm=4.67.1
+  - joblib

@@ -1,0 +1,8 @@
+name: cellsnp-env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - cellsnp-lite=1.2.2
+  - htslib=1.3
