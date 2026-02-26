@@ -1,49 +1,140 @@
-Variant Consistency Pipeline
-This pipeline evaluates donor-specific variant consistency in multiplexed single-cell data by comparing observed pileups against a reference VCF. It automates the process from raw BAM pileups to final consistency metrics using Snakemake.
+# Variant Consistency Pipeline
 
-1. Setup & Installation
-The pipeline uses Snakemake to manage software environments automatically.
+A Snakemake-based workflow for evaluating donor-specific variant
+consistency in multiplexed single-cell data.
 
-Clone this repository:
+This pipeline automates the process of comparing observed pileups
+against reference VCF genotypes to determine consistency across multiple
+donors.
 
-Bash
-git clone <your-fork-url>
-cd my_var_con
-Create the Master Environment:
-If you are on Hoffman2, load the Anaconda module first:
+------------------------------------------------------------------------
 
-Bash
-module load anaconda3
-conda env create -f envs/snakemake.yaml
-Activate the Environment:
+## 1. Setup & Installation
 
-Bash
-conda activate snakemake_env
-2. Configuration
-Before running, you must update config.yaml with your specific project paths:
+The pipeline uses **Snakemake** to manage all software dependencies
+automatically via Conda environments.
 
-vcf: Path to your reference VCF.
+### Prerequisites
 
-donors: Path to a .txt file containing your multiplexed donor IDs.
+-   **Conda** must be installed on your system.
 
-samples: A list of your sample names.
+-   **Hoffman2 Users**: Load the Anaconda module before starting:
 
-out_root: The base directory where all results will be saved.
+    module load anaconda3
 
-3. Running the Pipeline
-Launch the pipeline with the following command. Snakemake will automatically build the required sub-environments for cellsnp-lite and the Python scripts.
+------------------------------------------------------------------------
 
-Bash
-snakemake --use-conda --cores 16 -p
-Use -n before running to perform a "dry run" and verify the execution plan.
+### Installation Steps
 
-4. Output Structure
-The pipeline generates an organized, numerical directory tree for each sample within your out_root:
+#### 1. Clone the repository
 
-00_cellsnp/: Variant pileup results.
+    git clone <your-fork-url>
+    cd my_var_con
 
-01_counts/: AD and DP matrices.
+#### 2. Create the Master Environment
 
-02_indices/: Partitioned variant index dictionaries.
+This environment contains the Snakemake "Flight Controller".
 
-03_metrics/cov{X}/: Final consistency CSVs filtered by coverage threshold X.
+    conda env create -f envs/snakemake.yaml
+
+#### 3. Activate the Environment
+
+    conda activate snakemake_env
+
+------------------------------------------------------------------------
+
+## 2. Configuration
+
+Before running the pipeline, edit the `config.yaml` file to point to
+your specific project data.
+
+  -----------------------------------------------------------------------
+  Variable                                      Description
+  --------------------------------------------- -------------------------
+  `vcf`                                         Path to your reference
+                                                VCF file (genotypes).
+
+  `donors`                                      Path to a `.txt` file
+                                                containing multiplexed
+                                                donor IDs.
+
+  `samples`                                     A list of sample names to
+                                                process.
+
+  `out_root`                                    Base directory where all
+                                                results will be saved.
+
+  `coverage_thresholds`                         List of coverage levels
+                                                (e.g., `[0, 10, 20]`) for
+                                                final filtering.
+  -----------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+## 3. Running the Pipeline
+
+Launch the pipeline with:
+
+    snakemake --use-conda --cores 16 -p
+
+On the first run, Snakemake will automatically create the required
+sub-environments for:
+
+-   `cellsnp-lite`
+-   The Python analysis scripts
+
+------------------------------------------------------------------------
+
+### Useful Commands
+
+**Dry Run** --- View execution plan without running jobs:
+
+    snakemake -np
+
+**Summary** --- View table of planned output files:
+
+    snakemake --summary
+
+**Unlock** --- Use if a previous session was interrupted:
+
+    snakemake --unlock
+
+------------------------------------------------------------------------
+
+## 4. Output Structure
+
+The pipeline generates an organized directory tree for each sample
+within `out_root`:
+
+    out_root/
+    ├── 00_cellsnp/        # Variant pileup results from cellsnp-lite
+    ├── 01_counts/         # AD and DP matrices generated from pileups
+    ├── 02_indices/        # Variant index dictionaries partitioned by consistency category
+    └── 03_metrics/
+        └── cov{X}/        # Final consistency CSVs for coverage threshold X
+
+### Directory Descriptions
+
+-   **00_cellsnp/**\
+    Raw pileup outputs generated by `cellsnp-lite`.
+
+-   **01_counts/**\
+    Processed allele depth (AD) and depth (DP) matrices derived from
+    pileups.
+
+-   **02_indices/**\
+    Variant index dictionaries partitioned into consistency categories.
+
+-   **03_metrics/cov{X}/**\
+    Final consistency metrics CSVs filtered at coverage threshold `X`.
+
+------------------------------------------------------------------------
+
+## Credits
+
+This pipeline is a fork of the original work by Terence Li, refactored
+for improved:
+
+-   Portability\
+-   Multithreading\
+-   Automation via Snakemake
