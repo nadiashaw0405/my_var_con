@@ -1,0 +1,84 @@
+import numpy as np
+import os
+
+configfile: "config.yaml"
+
+VCF = config["vcf"]
+DONORS = config["donors"]
+OUT = config["out_root"]
+PREFIX = config.get("out_prefix", "default_run")
+
+# Hardcoded environment paths for testing
+CELLSNP_BIN = "/u/project/cluo/nshaw/cellsnp-lite/old/cellsnp_1.2.1_env/bin/cellsnp-lite"
+VARCON_BIN = "/u/project/cluo/nshaw/old/variant_consistency/var_con_env/bin/python"
+
+DONOR_LIST = list(np.loadtxt(DONORS, dtype=str))
+
+rule all:
+    input:
+        expand("{out}/{prefix}/{run}/03_metrics/{run}_c1_df.csv", 
+               out=OUT, prefix=PREFIX, run=config["runs"].keys())
+
+rule cellsnp_00:
+    input:
+        bam = lambda wildcards: config["runs"][wildcards.run_name]["bam"],
+        barcodes = lambda wildcards: config["runs"][wildcards.run_name]["barcodes"]
+    output: 
+        dir = directory("{out}/{prefix}/{run_name}/00_cellsnp"),
+        vcf = "{out}/{prefix}/{run_name}/00_cellsnp/cellSNP.base.vcf.gz",
+        samples = "{out}/{prefix}/{run_name}/00_cellsnp/cellSNP.samples.tsv",
+        mats = multiext("{out}/{prefix}/{run_name}/00_cellsnp/cellSNP.tag.", "AD.mtx", "DP.mtx", "OTH.mtx")
+    log: "{out}/{prefix}/{run_name}/logs/00_cellsnp.log"
+    threads: 12
+    shell:
+        "{CELLSNP_BIN} -s {input.bam} -b {input.barcodes} -R {VCF} -O {output.dir} -p {threads} --gzip > {log} 2>&1"
+
+rule run_script_01:
+    input: 
+        dir_00 = "{out}/{prefix}/{run_name}/00_cellsnp",
+        vcf_in = "{out}/{prefix}/{run_name}/00_cellsnp/cellSNP.base.vcf.gz",
+        samples_in = "{out}/{prefix}/{run_name}/00_cellsnp/cellSNP.samples.tsv",
+        mats_in = multiext("{out}/{prefix}/{run_name}/00_cellsnp/cellSNP.tag.", "AD.mtx", "DP.mtx", "OTH.mtx")
+    output: 
+        out_dir = directory("{out}/{prefix}/{run_name}/01_counts"),
+        mats = multiext("{out}/{prefix}/{run_name}/01_counts/cellSNP.tag.", "AD.mtx.gz", "DP.mtx.gz", "OTH.mtx.gz"),
+        vcf = "{out}/{prefix}/{run_name}/01_counts/varcon.SNPs.vcf.gz",
+        barcodes = "{out}/{prefix}/{run_name}/01_counts/barcodes.tsv.gz",
+        consistent = expand("{{out}}/{{prefix}}/{{run_name}}/01_counts/{donor}.consistent.mtx.gz", donor=DONOR_LIST)
+    log: "{out}/{prefix}/{run_name}/logs/01_counts.log"
+    threads: 8
+    shell:
+        """
+        {VARCON_BIN} workflow/scripts/01_con_counts_multithread.py \
+            -c {input.dir_00} -i {VCF} -d {DONORS} \
+            -o {wildcards.out}/{wildcards.prefix}/{wildcards.run_name}/01_counts -t {threads} > {log} 2>&1
+        """
+
+rule run_script_02:
+    input: 
+        dir_01 = "{out}/{prefix}/{run_name}/01_counts",
+        vcf = "{out}/{prefix}/{run_name}/01_counts/varcon.SNPs.vcf.gz",
+        consistent = expand("{{out}}/{{prefix}}/{{run_name}}/01_counts/{donor}.consistent.mtx.gz", donor=DONOR_LIST)
+    output: 
+        dir = directory("{out}/{prefix}/{run_name}/02_indices"),
+        pkls = multiext("{out}/{prefix}/{run_name}/02_indices/", "c1_dict.pkl", "c2_dict.pkl", "i1_dict.pkl", "i2_dict.pkl")
+    log: "{out}/{prefix}/{run_name}/logs/02_indices.log"
+    threads: 16
+    shell:
+        "{VARCON_BIN} workflow/scripts/02_get_con_indices.py -i {input.dir_01} -d {DONORS} -o {output.dir} -t {threads} > {log} 2>&1"
+
+rule run_script_03:
+    input: 
+        dir_01 = "{out}/{prefix}/{run_name}/01_counts",
+        vcf = "{out}/{prefix}/{run_name}/01_counts/varcon.SNPs.vcf.gz",
+        pkldir = "{out}/{prefix}/{run_name}/02_indices",
+        c1_pkl = "{out}/{prefix}/{run_name}/02_indices/c1_dict.pkl"
+    output: 
+        metrics = multiext("{out}/{prefix}/{run_name}/03_metrics/{run_name}_", "c1_df.csv", "c2_df.csv", "i1_df.csv", "i2_df.csv")
+    log: "{out}/{prefix}/{run_name}/logs/03_metrics.log"
+    shell:
+        """
+        {VARCON_BIN} workflow/scripts/03_count_varcon_multithread.py \
+            -i {input.dir_01} -p {input.pkldir} -d {DONORS} \
+            -o {wildcards.out}/{wildcards.prefix}/{wildcards.run_name}/03_metrics > {log} 2>&1
+        """

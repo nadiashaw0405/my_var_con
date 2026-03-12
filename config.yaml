@@ -1,18 +1,15 @@
 # Variant Consistency Pipeline Configuration
 
-# 1. Global reference data
+# 1. Global VCF and donor reference data
 vcf: "/u/project/cluo/terencew/igvf/pilot/multiome/vcf/pilot_000.vcf.gz"
-donors: "/u/project/cluo/nshaw/new_variant_consistency/data/donors.txt"
+donors: "/u/project/cluo/terencew/igvf/pilot/multiome/txt/donors.txt"
 
-# 2. Sample mapping
-samples:
+# 2. Sequencing run BAM and barcodes file
+runs:
   "20220928-IGVF-D0":
     bam: "/u/project/cluo/terencew/igvf/pilot/multiome/mapping/cr_arc/igvf_ref/20220928-IGVF-D0/outs/gex_possorted_bam.bam"
     barcodes: "/u/project/cluo/terencew/igvf/pilot/multiome/mapping/cr_arc/igvf_ref/20220928-IGVF-D0/outs/filtered_feature_bc_matrix/barcodes.tsv.gz"
 
-# 3. Analysis parameters
-# Minimum depth filters for Step 03 reports
-coverage_thresholds: [0, 10, 20]
-
-# Base directory where 00, 01, 02, 03 folders will be created
-out_root: "var-con_pipeline"
+# 3. Base directory for results and user-defined prefix for specific run
+out_root: "var_con_output"
+out_prefix: "run_v1"
