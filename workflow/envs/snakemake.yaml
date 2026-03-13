@@ -8,3 +8,4 @@ dependencies:
   - mamba
   - pandas
   - conda>=24.7.1
+  - snakemake-executor-plugin-cluster-generic

@@ -135,7 +135,7 @@ for donor in donors:
                                       total=n_snps))
     consistent_mtx = vstack(mtx_list)
     mmwrite(f'{outdir}/{donor}.consistent.mtx', consistent_mtx)
-    subprocess.run([f'gzip -f {outdir}/{donor}.consistent.mtx'], shell=True)
+    subprocess.run(f'gzip -f {outdir}/{donor}.consistent.mtx', shell=True)
 
 barcodes.to_csv(f'{outdir}/barcodes.tsv.gz', sep='\t',
         header=None, index=True)
@@ -144,9 +144,9 @@ mmwrite(f'{outdir}/cellSNP.tag.AD.mtx', ad)
 mmwrite(f'{outdir}/cellSNP.tag.DP.mtx', dp)
 mmwrite(f'{outdir}/cellSNP.tag.OTH.mtx', oth)
 
-subprocess.run([f'gzip -f {outdir}/cellSNP.tag.AD.mtx'], shell=True)
-subprocess.run([f'gzip -f {outdir}/cellSNP.tag.DP.mtx'], shell=True)
-subprocess.run([f'gzip -f {outdir}/cellSNP.tag.OTH.mtx'], shell=True)
+subprocess.run(f'gzip -f {outdir}/cellSNP.tag.AD.mtx', shell=True)
+subprocess.run(f'gzip -f {outdir}/cellSNP.tag.DP.mtx', shell=True)
+subprocess.run(f'gzip -f {outdir}/cellSNP.tag.OTH.mtx', shell=True)
 
 final_demux = final_demux.reset_index(drop=True)
 final_demux.to_csv(f'{outdir}/varcon.SNPs.vcf.gz',
