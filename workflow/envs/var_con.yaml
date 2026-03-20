@@ -1,4 +1,4 @@
-name: var_con-env
+name: var_con_env
 channels:
   - conda-forge
   - bioconda

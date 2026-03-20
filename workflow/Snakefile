@@ -8,10 +8,6 @@ DONORS = config["donors"]
 OUT = config["out_root"]
 PREFIX = config.get("out_prefix", "default_run")
 
-# Hardcoded environment paths for testing
-CELLSNP_BIN = "/u/project/cluo/nshaw/cellsnp-lite/old/cellsnp_1.2.1_env/bin/cellsnp-lite"
-VARCON_BIN = "/u/project/cluo/nshaw/old/variant_consistency/var_con_env/bin/python"
-
 DONOR_LIST = list(np.loadtxt(DONORS, dtype=str))
 
 rule all:
@@ -30,8 +26,9 @@ rule cellsnp_00:
         mats = multiext("{out}/{prefix}/{run_name}/00_cellsnp/cellSNP.tag.", "AD.mtx", "DP.mtx", "OTH.mtx")
     log: "{out}/{prefix}/{run_name}/logs/00_cellsnp.log"
     threads: 12
+    conda: "cellsnp_env"
     shell:
-        "{CELLSNP_BIN} -s {input.bam} -b {input.barcodes} -R {VCF} -O {output.dir} -p {threads} --gzip > {log} 2>&1"
+        "cellsnp-lite -s {input.bam} -b {input.barcodes} -R {VCF} -O {output.dir} -p {threads} --gzip > {log} 2>&1"
 
 rule run_script_01:
     input: 
@@ -46,10 +43,11 @@ rule run_script_01:
         barcodes = "{out}/{prefix}/{run_name}/01_counts/barcodes.tsv.gz",
         consistent = expand("{{out}}/{{prefix}}/{{run_name}}/01_counts/{donor}.consistent.mtx.gz", donor=DONOR_LIST)
     log: "{out}/{prefix}/{run_name}/logs/01_counts.log"
-    threads: 8
+    threads: 4
+    conda: "var_con_env"
     shell:
         """
-        {VARCON_BIN} workflow/scripts/01_con_counts_multithread.py \
+        python workflow/scripts/01_con_counts_multithread.py \
             -c {input.dir_00} -i {VCF} -d {DONORS} \
             -o {wildcards.out}/{wildcards.prefix}/{wildcards.run_name}/01_counts -t {threads} > {log} 2>&1
         """
@@ -63,9 +61,10 @@ rule run_script_02:
         dir = directory("{out}/{prefix}/{run_name}/02_indices"),
         pkls = multiext("{out}/{prefix}/{run_name}/02_indices/", "c1_dict.pkl", "c2_dict.pkl", "i1_dict.pkl", "i2_dict.pkl")
     log: "{out}/{prefix}/{run_name}/logs/02_indices.log"
-    threads: 16
+    threads: 4
+    conda: "var_con_env"
     shell:
-        "{VARCON_BIN} workflow/scripts/02_get_con_indices.py -i {input.dir_01} -d {DONORS} -o {output.dir} -t {threads} > {log} 2>&1"
+        "python workflow/scripts/02_get_con_indices.py -i {input.dir_01} -d {DONORS} -o {output.dir} -t {threads} > {log} 2>&1"
 
 rule run_script_03:
     input: 
@@ -75,10 +74,15 @@ rule run_script_03:
         c1_pkl = "{out}/{prefix}/{run_name}/02_indices/c1_dict.pkl"
     output: 
         metrics = multiext("{out}/{prefix}/{run_name}/03_metrics/{run_name}_", "c1_df.csv", "c2_df.csv", "i1_df.csv", "i2_df.csv")
+    params:
+        coverage = config["coverage"]
     log: "{out}/{prefix}/{run_name}/logs/03_metrics.log"
+    threads: 2
+    conda: "var_con_env"
     shell:
         """
-        {VARCON_BIN} workflow/scripts/03_count_varcon_multithread.py \
+        python workflow/scripts/03_count_varcon_multithread.py \
             -i {input.dir_01} -p {input.pkldir} -d {DONORS} \
+            -c {params.coverage} \
             -o {wildcards.out}/{wildcards.prefix}/{wildcards.run_name}/03_metrics > {log} 2>&1
         """

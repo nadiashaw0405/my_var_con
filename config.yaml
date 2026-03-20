@@ -12,4 +12,7 @@ runs:
 
 # 3. Base directory for results and user-defined prefix for specific run
 out_root: "var_con_output"
-out_prefix: "run_v1"
+out_prefix: "run_v3_env-test"
+
+# 4. Pipeline parameters (change coverage level if desired)
+coverage: 0

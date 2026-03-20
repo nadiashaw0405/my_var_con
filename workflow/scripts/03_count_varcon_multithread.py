@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import gzip
 from scipy.sparse import csr_matrix, vstack, hstack
 from scipy.io import mmread, mmwrite
 
@@ -64,8 +65,14 @@ def process_bc(i):
 
         tmp_c1_counts.append(np.sum(consistent[j][c1.index[c1_mask], i]))
         tmp_c2_counts.append(np.sum(consistent[j][c2.index[c2_mask], i]))
-        tmp_i1_counts.append(np.sum(inconsistent[j][i1.index[i1_mask], i]))
-        tmp_i2_counts.append(np.sum(inconsistent[j][i2.index[i2_mask], i]))
+
+        i1_consistent_sum = np.sum(consistent[j][i1.index[i1_mask], i])
+        i1_total_dp_sum = np.sum(dp[i1.index[i1_mask]])
+        tmp_i1_counts.append(i1_total_dp_sum - i1_consistent_sum)
+
+        i2_consistent_sum = np.sum(consistent[j][i2.index[i2_mask], i])
+        i2_total_dp_sum = np.sum(dp[i2.index[i2_mask]])
+        tmp_i2_counts.append(i2_total_dp_sum - i2_consistent_sum)
 
     return tmp_c1_counts, tmp_c2_counts, tmp_i1_counts, tmp_i2_counts
 
@@ -83,17 +90,30 @@ n_donors = len(donors)
 barcodes = pd.Index(pd.read_csv(f'{indir}/barcodes.tsv.gz',
                        sep='\t',header=None,index_col=0).index)
 
-dp = mmread(f'{indir}/cellSNP.tag.DP.mtx.gz').tocsr()
+header_line = 0
+with gzip.open(f'{indir}/varcon.SNPs.vcf.gz', 'rt') as f:
+    for i, line in enumerate(f):
+        if 'CHROM' in line:
+            header_line = i
+            break
+# 1. Load without forcing an index column
+vcf = pd.read_csv(f'{indir}/varcon.SNPs.vcf.gz', sep='\t', 
+                 compression='gzip', header=header_line, index_col=0)
 
-vcf = pd.read_csv(f'{indir}/varcon.SNPs.vcf.gz', sep='\t', header=0, index_col=0)
-vcf['chrom_pos'] = vcf.index
-vcf.reset_index(drop=True, inplace=True)
-vcf['DP'] = [int(x.split(';')[1].split('=')[1]) for x in vcf['INFO']]
+vcf.columns = [c.replace('#', '').strip() for c in vcf.columns]
+
+def extract_dp(info_string):
+    if pd.isna(info_string): return 0
+    for item in str(info_string).split(';'):
+        if item.startswith('DP='):
+            return int(item.split('=')[1])
+    return 0
+
+vcf['DP'] = vcf['INFO'].apply(extract_dp)
 dp = vcf['DP'].to_numpy()
 
 consistent = [mmread(f'{indir}/{donor}.consistent.mtx.gz').tocsr()
               for donor in donors]
-inconsistent = [dp - mtx for mtx in consistent]
 
 n_barcodes = barcodes.shape[0]
 

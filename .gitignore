@@ -9,10 +9,7 @@ var-con_pipeline/
 03_metrics/
 var_con_output/
 .snakemake/
-logs/cluster/*
-var_con_output/**
-
-!logs/cluster/.gitkeep
+var_con_output/*
 !var_con_output/.gitkeep
 
 # Python cache
@@ -20,9 +17,9 @@ __pycache__/
 *.pyc
 
 # Log files
-logs/
+logs/*
+!logs/cluster/.gitkeep
 *.log
 
 # Conda environment prefix (if created locally)
 .conda/
-var_con_output/
