@@ -1,13 +1,11 @@
 import numpy as np
 import pandas as pd
 import gzip
-from scipy.sparse import csr_matrix, vstack, hstack
-from scipy.io import mmread, mmwrite
-
+import pickle
 import argparse
+from scipy.io import mmread
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
-import pickle
 
 parser = argparse.ArgumentParser(description='Program to take \
         dictionaries of variants/consistency counts and a coverage threshold \
