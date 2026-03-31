@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-import numpy as np
+mport numpy as np
 import pandas as pd
 import gzip
 from scipy.sparse import csr_matrix, vstack, hstack
@@ -31,6 +29,9 @@ parser.add_argument('-c', '--cov_thresh', type=str, required=True, \
 parser.add_argument('-o', '--outdir', type=str, required=True, \
         help='directory to store sparse matrices per individual')
 
+parser.add_argument('-n', '--run_name', type=str, required=True, 
+        help='prefix for output files (e.g., the sequencing run ID)')
+
 args = parser.parse_args()
 
 indir = args.indir
@@ -38,6 +39,7 @@ pkldir = args.pkldir
 donor_path = args.donors
 cov_thresh = int(args.cov_thresh)
 outdir = args.outdir
+run_name = args.run_name
 
 ### multithreading function
 
@@ -155,7 +157,7 @@ i2_df = pd.DataFrame(i2_counts, columns=donors, index=barcodes)
 ###
 
 cov = str(cov_thresh)
-c1_df.to_csv(f'{outdir}/c1_df_{cov}.csv', sep='\t', header=True, index=True)
-c2_df.to_csv(f'{outdir}/c2_df_{cov}.csv', sep='\t', header=True, index=True)
-i1_df.to_csv(f'{outdir}/i1_df_{cov}.csv', sep='\t', header=True, index=True)
-i2_df.to_csv(f'{outdir}/i2_df_{cov}.csv', sep='\t', header=True, index=True)
+c1_df.to_csv(f'{outdir}/{run_name}_c1_df.csv', sep='\t', header=True, index=True)
+c2_df.to_csv(f'{outdir}/{run_name}_c2_df.csv', sep='\t', header=True, index=True)
+i1_df.to_csv(f'{outdir}/{run_name}_i1_df.csv', sep='\t', header=True, index=True)
+i2_df.to_csv(f'{outdir}/{run_name}_i2_df.csv', sep='\t', header=True, index=True)

@@ -12,8 +12,8 @@ DONOR_LIST = list(np.loadtxt(DONORS, dtype=str))
 
 rule all:
     input:
-        expand("{out}/{prefix}/{run}/03_metrics/{run}_c1_df.csv", 
-               out=OUT, prefix=PREFIX, run=config["runs"].keys())
+        expand("{out}/{prefix}/{run_name}/03_metrics/{run_name}_{metric}_df.csv", 
+               out=OUT, prefix=PREFIX, run_name=config["runs"].keys(), metric=["c1", "c2", "i1", "i2"])
 
 rule cellsnp_00:
     input:
@@ -49,7 +49,7 @@ rule run_script_01:
         """
         python workflow/scripts/01_con_counts_multithread.py \
             -c {input.dir_00} -i {VCF} -d {DONORS} \
-            -o {wildcards.out}/{wildcards.prefix}/{wildcards.run_name}/01_counts -t {threads} > {log} 2>&1
+            -o {output.out_dir} -t {threads} > {log} 2>&1
         """
 
 rule run_script_02:
@@ -83,6 +83,6 @@ rule run_script_03:
         """
         python workflow/scripts/03_count_varcon_multithread.py \
             -i {input.dir_01} -p {input.pkldir} -d {DONORS} \
-            -c {params.coverage} \
+            -c {params.coverage} -n {wildcards.run_name} \
             -o {wildcards.out}/{wildcards.prefix}/{wildcards.run_name}/03_metrics > {log} 2>&1
         """
