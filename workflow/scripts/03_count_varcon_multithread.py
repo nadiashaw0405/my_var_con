@@ -1,4 +1,4 @@
-mport numpy as np
+import numpy as np
 import pandas as pd
 import gzip
 from scipy.sparse import csr_matrix, vstack, hstack
