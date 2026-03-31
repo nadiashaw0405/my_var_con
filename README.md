@@ -71,7 +71,7 @@ coverage: 0
 ## 3. Execution
 
 ### Dry Run
-Before launching the workflow, it is recommended to perform a dry run to verify that all paths in `config.yaml` are valid and that the execution plan is correct. Snakemake automatically detects the Snakefile in your current directory.
+Before launching the workflow, perform a dry run to verify that all paths in `config.yaml` are valid and the execution plan is correct.
 
 ```
 conda activate snakemake_env
@@ -82,22 +82,22 @@ This command prints the planned jobs without executing them.
 
 ### Local/Interactive Test
 
-To test a single sample (up to Rule 00) on a compute node:
+To verify that your BAM paths and Conda environments are working before launching a full run, execute the first step of the pipeline on an interactive compute node (via `qrsh`):
 ```
-snakemake --use-conda --cores 12
+snakemake --use-conda --cores 12 cellsnp_00
 ```
 If the pipeline says the directory is locked, run: `snakemake --unlock`.
 
-### Launch Workflow on Cluster
+### Launch Full Workflow on Cluster
 
-For large-scale processing, use the provided submission script:
+For large-scale, automated processing of all sequencing runs defined in `config.yaml`, use the provided submission script to manage job scheduling:
 ```
 qsub submit_snakemake.sh
 ```
 **Monitor Progress:**
 - **Main Pipeline Log:** `tail -f logs/snakemake_main.log`
-- **Rule Logs:** `tail -f var_con_output/{run_name}/logs/00_cellsnp.log`
-- **Cluster Logs:** `ls logs/cluster/`
+- **Rule Logs:** `tail -f var_con_output/{prefix}/{run_name}/logs/00_cellsnp.log`
+- **Cluster Logs:** `ls -ltr logs/cluster/`
 
 ---
 
