@@ -16,7 +16,7 @@ my_var_con/
 │   ├── Snakefile             # Core automation logic and rules
 │   ├── envs/                 # Conda environments
 │   └── scripts/              # Python analysis scripts
-├── config.yaml               # Sample and reference file paths
+├── config.yaml               # Sequencing run and reference file paths
 ├── submit_snakemake.sh       # Cluster submission script to run pipeline
 ├── logs/cluster/             # Cluster error/output logs
 ├── var_con_output/           # Results directory
@@ -30,7 +30,6 @@ my_var_con/
   1. **Base environment:** The workflow requires a base Snakemake environment. Create it once:
   ```
   conda env create -f workflow/envs/snakemake.yaml
-  conda activate snakemake_env
   ```
   2. **Sub-environments:** The workflow requires two additional environments located in `workflow/envs/`.   It is recommended to manually pre-build the sub-environments from their respective `.yaml` files before running the pipeline for the first time. This ensures all dependencies are correctly indexed by your package manager:
   ```
@@ -44,9 +43,9 @@ my_var_con/
   
 ### Configuration
 Edit `config.yaml` to define your runs and global parameters.
-- `runs`: A mapping of run names to their respective BAM and barcode paths.
+- `runs`: A mapping of run names to their respective BAM and barcode paths (see example below).
 - `vcf`: Path to the reference genotype VCF (e.g., reference_000.vcf.gz).
-- `donors`: A `.txt` file containing the donor IDs present in the multiplexed sample.
+- `donors`: A `.txt` file containing the donor IDs present in the multiplexed sample (see example below).
 - `out_root`: The root directory for all outputs (default: `var_con_output`).
 - `out_prefix`: The output directory for a specific run of the pipeline.
 - `coverage`: Specify a minimum depth level, allowing comparison across quality thresholds (optional; default = `0`).
@@ -67,7 +66,16 @@ out_root: "var_con_output"
 out_prefix: "run_v1_test"
 coverage: 0
 ```
+
+**Example format for `donors.txt`:**
+
+```text
+Donor_A1
+Donor_A2
+Donor_A3
+```
 ---
+
 ## 3. Execution
 
 ### Dry Run
@@ -113,9 +121,9 @@ qsub submit_snakemake.sh
 After execution, results are written to the directory specified by `out_root` using the following structure:
 
 ```
-{out_root}/                           # Root directory(`out_root` defined in config.yaml)
-└── {out_prefix}/                     # Pipeline run prefix defined in `out_prefix`, e.g., `run_v1`
-    └── {run_name}/                   # Sequencing run name, e.g., `20201212-SAMP-A1`
+{out_root}/                           # Root directory ("out_root" defined in config.yaml)
+└── {out_prefix}/                     # Pipeline run prefix defined in "out_prefix," e.g., "run_v1"
+    └── {run_name}/                   # Sequencing run name, e.g., "20201212-RUN-A1"
         │
         ├── 00_cellsnp/               # Step 0: Genotyping (cellsnp-lite)
         │   ├── cellSNP.base.vcf.gz   # VCF of sites evaluated
@@ -125,8 +133,11 @@ After execution, results are written to the directory specified by `out_root` us
         │   └── cellSNP.tag.OTH.mtx   # Other/error allele counts
         │
         ├── 01_counts/                       # Step 1: Donor Partitioning
-        │   ├── varcon.SNPs.vcf.gz           # VCF filtered for consistent sites
+        │   ├── varcon.SNPs.vcf.gz           # VCF filtered for sites present in reference genotypes
         │   ├── barcodes.tsv.gz              # Barcodes matching the matrix indices
+        │   ├── cellSNP.tag.AD.mtx.gz        # Matrices subset to reference SNPs
+        │   ├── cellSNP.tag.DP.mtx.gz  
+        │   ├── cellSNP.tag.OTH.mtx.gz   
         │   ├── {Donor_A}.consistent.mtx.gz  # Matrices of consistent SNPs
         │   └── {Donor_B}.consistent.mtx.gz  # (one file per donor in your list)
         │
@@ -137,7 +148,7 @@ After execution, results are written to the directory specified by `out_root` us
         │   └── i2_dict.pkl           # Inconsistent/ambient proxy 2
         │
         ├── 03_metrics/               # Step 3: Final Results
-        │   ├── {run_name}_c1_df.csv  # Final consistency metrics for C1
+        │   ├── {run_name}_c1_df.csv  # Final consistency metrics
         │   ├── {run_name}_c2_df.csv    
         │   ├── {run_name}_i1_df.csv    
         │   └── {run_name}_i2_df.csv 
