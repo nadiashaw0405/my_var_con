@@ -76,8 +76,6 @@ rule run_script_03:
         metrics = multiext("{out}/{prefix}/{run_name}/03_metrics/{run_name}_", "c1_df.csv", "c2_df.csv", "i1_df.csv", "i2_df.csv")
     params:
         coverage = config["coverage"]
-    resources:
-        mem_mb = 8000
     log: "{out}/{prefix}/{run_name}/logs/03_metrics.log"
     threads: 2
     conda: "var_con_env"
